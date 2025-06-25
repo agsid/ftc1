@@ -4,8 +4,8 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-@TeleOp(name = "V3Full")
-public class SidSlides2 extends LinearOpMode {
+@TeleOp(name = "DcMotors")
+public class DcMotors extends LinearOpMode {
 
   private DcMotor leftHorizSlide;
   private DcMotor leftSlide;
