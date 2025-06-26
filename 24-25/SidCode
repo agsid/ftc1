@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@TeleOp(name = "SidCode_New", group = "Linear OpMode") // Changed name to indicate brake behavior
+@TeleOp(name = "SidCode_New", group = "Linear OpMode")
 public class SidCode extends LinearOpMode {
 
     private DcMotor leftHorizSlide = null;
@@ -17,7 +17,7 @@ public class SidCode extends LinearOpMode {
     private DcMotor right_front = null;
 
     // Define a small holding power and a joystick deadband
-    private static final double SLIDE_HOLDING_POWER = 0.08; // Adjust this value (e.g., 0.05 to 0.15)
+    private static final double SLIDE_HOLDING_POWER = -0.15; // Adjust this value (e.g., 0.05 to 0.15)
     private static final double JOYSTICK_DEADBAND = 0.1; // Joystick input below this won't move the motor
 
     @Override
@@ -40,11 +40,10 @@ public class SidCode extends LinearOpMode {
 
         // Your slide directions. Assuming FORWARD power lifts the slide.
         leftHorizSlide.setDirection(DcMotor.Direction.FORWARD);
-        leftSlide.setDirection(DcMotor.Direction.FORWARD); // Assuming FORWARD makes it go UP
-        rightSlide.setDirection(DcMotor.Direction.REVERSE); // Assuming REVERSE makes it go UP (to match leftSlide)
+        leftSlide.setDirection(DcMotor.Direction.FORWARD);
+        rightSlide.setDirection(DcMotor.Direction.REVERSE);
 
-        // --- NEW: Set ZeroPowerBehavior for the slides ---
-        // BRAKE mode will actively resist external forces (like gravity) when power is zero or very low.
+        // Set ZeroPowerBehavior for the slides
         leftSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
@@ -70,42 +69,41 @@ public class SidCode extends LinearOpMode {
             right_front.setPower(rightFrontPower);
             right_back.setPower(rightBackPower);
 
-            // Control horizontal slide motor with dpad
-            if (gamepad1.dpad_up) {
+            // Control horizontal slide motor with dpad and add rumble effect
+            if (gamepad2.dpad_up) {
                 leftHorizSlide.setPower(0.5);
-            } else if (gamepad1.dpad_down) {
+                // Rumble lightly when moving the horizontal slide up
+                gamepad2.rumble(0.2, 0.2, 50); // Left rumble, Right rumble, Duration in milliseconds
+            } else if (gamepad2.dpad_down) {
                 leftHorizSlide.setPower(-0.5);
+                // Rumble lightly when moving the horizontal slide down
+                gamepad2.rumble(0.2, 0.2, 50);
             } else {
                 leftHorizSlide.setPower(0);
+                // Stop rumble when the slide is not moving
+                gamepad2.rumble(0, 0, 0); // Stops any ongoing rumble
             }
 
-            // --- HOLDING POWER LOGIC FOR VERTICAL SLIDES ---
+            // HOLDING POWER LOGIC FOR VERTICAL SLIDES
             double leftSlidePower = -gamepad2.left_stick_y;
-            double rightSlidePower = -gamepad2.right_stick_y;
 
             // Apply deadband to joystick input
             if (Math.abs(leftSlidePower) < JOYSTICK_DEADBAND) {
-                // If joystick is near center, apply holding power
                 leftSlidePower = SLIDE_HOLDING_POWER;
-            }
-            if (Math.abs(rightSlidePower) < JOYSTICK_DEADBAND) {
-                // If joystick is near center, apply holding power
-                rightSlidePower = SLIDE_HOLDING_POWER;
             }
 
             // Apply power to vertical slide motors
             leftSlide.setPower(leftSlidePower);
-            rightSlide.setPower(rightSlidePower);
+            rightSlide.setPower(leftSlidePower);
 
 
             // Add telemetry for debugging (optional)
-            telemetry.addData("Status", "Running");
             telemetry.addData("LeftFront Power", leftFrontPower);
             telemetry.addData("LeftBack Power", leftBackPower);
             telemetry.addData("RightFront Power", rightFrontPower);
             telemetry.addData("RightBack Power", rightBackPower);
-            telemetry.addData("Left Slide Power", leftSlidePower);
-            telemetry.addData("Right Slide Power", rightSlidePower);
+            telemetry.addData("Slide Power", leftSlidePower);
+
             telemetry.update();
         }
     }
