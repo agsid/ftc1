@@ -21,87 +21,35 @@ public class SidCode extends LinearOpMode {
 
     // Instance of the new FrontGrabber class
     private FrontGrabber frontGrabber;
+    // Instance of the new RobotArm class
+    private RobotArm robotArm;
 
-    private Servo armServo;
-    private Servo wristServo;
-    private Position currentArmPosition; // Renamed to avoid conflict with enum 'Position'
+    // Renamed to avoid conflict with enum 'Position'
+    // private Position currentArmPosition; // Moved to RobotArm
 
     private static final double SLIDE_HOLDING_POWER = -0.15;
     private static final double JOYSTICK_DEADBAND = 0.1;
 
-    public enum Position {
-        GRAB_FROM_WALL(0.75, 0.5),
-        HANG_PREP(0, 0.3),
-        HANG_SPECIMEN(0, 0.4);
+    // Position enum moved to RobotArm class
+    // public enum Position { ... }
 
-        private double armPosition;
-        private double wristPosition;
+    // Grabber methods moved to FrontGrabber class
+    // public void initGrabber(double close, double open, Servo servo){ ... }
+    // public void closeGrabber(){ ... }
+    // public void openGrabber(){ ... }
+    // public boolean isGrabberClosed() { ... }
 
-        Position(double armPosition, double wristPosition) {
-            this.armPosition = armPosition;
-            this.wristPosition = wristPosition;
-        }
+    // Arm methods moved to RobotArm class
+    // public void initArm(HardwareMap hmap){ ... }
+    // public void setArmToPreset(Position position){ ... }
+    // public Position getArmPreset(){return currentArmPosition;}
+    // public void setArmServoPosition(double position){ ... }
+    // public void setWristServoPosition(double position){ ... }
+    // private int getIndexOfPreset(Position preset){ ... }
+    // public void incrementArmPreset(int amount){ ... }
+    // @SuppressLint("DefaultLocale")
+    // public String getArmTelemetry(){ ... }
 
-        public double getArmPosition() {
-            return armPosition;
-        }
-
-        public double getWristPosition() {
-            return wristPosition;
-        }
-    }
-
-    // Moved grabber logic into FrontGrabber class, removed initGrabber from here
-    // Removed closeGrabber, openGrabber, isGrabberClosed from here
-
-    public void initArm(HardwareMap hmap) {
-        armServo = hmap.servo.get("frontArmServo");
-        wristServo = hmap.servo.get("wristServo");
-        armServo.setDirection(Servo.Direction.REVERSE);
-        setArmToPreset(Position.GRAB_FROM_WALL); // Corrected: Using setArmToPreset to set initial arm position
-    }
-
-    public void setArmToPreset(Position position) {
-        setArmServoPosition(position.getArmPosition());
-        setWristServoPosition(position.getWristPosition());
-        currentArmPosition = position;
-    }
-
-    public Position getArmPreset() {
-        return currentArmPosition;
-    }
-
-    public void setArmServoPosition(double position) {
-        if (position >= 0 && position <= 1) {
-            armServo.setPosition(position);
-        }
-    }
-
-    public void setWristServoPosition(double position) {
-        if (position >= 0 && position <= 1) {
-            wristServo.setPosition(position);
-        }
-    }
-
-    private int getIndexOfPreset(Position preset) {
-        for (int i = 0; i < Position.values().length; i++) {
-            if (Position.values()[i] == preset) return i;
-        }
-        return -1;
-    }
-
-    public void incrementArmPreset(int amount) {
-        int currentPresetIndex = getIndexOfPreset(currentArmPosition);
-        if (currentPresetIndex == -1) return;
-        if (currentPresetIndex + amount < 0 || currentPresetIndex + amount >= Position.values().length) return;
-        Position newPreset = Position.values()[currentPresetIndex + amount];
-        setArmToPreset(newPreset);
-    }
-
-    @SuppressLint("DefaultLocale")
-    public String getArmTelemetry() {
-        return String.format("Arm/Wrist: %s", getArmPreset());
-    }
 
     @Override
     public void runOpMode() {
@@ -130,7 +78,8 @@ public class SidCode extends LinearOpMode {
 
         // Initialize the FrontGrabber instance
         frontGrabber = new FrontGrabber(hardwareMap, "frontGrabberServo", 0.70, 1.0);
-        initArm(hardwareMap); // Initialize the arm after other hardware
+        // Initialize the RobotArm instance
+        robotArm = new RobotArm(hardwareMap);
 
         waitForStart();
 
@@ -178,25 +127,37 @@ public class SidCode extends LinearOpMode {
                 }
                 sleep(250);
             }
-         if (gamepad2.a) {
-                if (frontGrabber.isGrabberClosed()) {
-                    frontGrabber.openGrabber();
-                } else {
-                    frontGrabber.closeGrabber();
-                }
+            // The following duplicate block was removed.
+            // if (gamepad1.a) {
+            //    if (frontGrabber.isGrabberClosed()) {
+            //        frontGrabber.openGrabber();
+            //    } else {
+            //        frontGrabber.closeGrabber();
+            //    }
+            //    sleep(250);
+            // }
+
+            // Original gamepad2.a and gamepad2.b for grabber control
+            if (gamepad2.a) {
+                frontGrabber.openGrabber();
                 sleep(250);
             }
-  
 
+            if (gamepad2.b) {
+                frontGrabber.closeGrabber();
+                sleep(250);
+            }
+
+            // Using the RobotArm instance for arm and wrist control
             if (gamepad2.right_trigger > 0.1) {
-                setArmToPreset(Position.HANG_SPECIMEN);
+                robotArm.setArmToPreset(RobotArm.Position.HANG_SPECIMEN);
                 sleep(200);
             } else if (gamepad2.left_trigger > 0.1) {
-                setArmToPreset(Position.GRAB_FROM_WALL);
+                robotArm.setArmToPreset(RobotArm.Position.GRAB_FROM_WALL);
                 sleep(200);
             }
 
-            if (gamepad1.dpad_up) setArmToPreset(Position.HANG_PREP);
+            if (gamepad1.dpad_up) robotArm.setArmToPreset(RobotArm.Position.HANG_PREP);
 
             telemetry.addData("LeftFront Power", leftFrontPower);
             telemetry.addData("LeftBack Power", leftBackPower);
@@ -205,7 +166,8 @@ public class SidCode extends LinearOpMode {
             telemetry.addData("Slide Power", leftSlidePower);
             // Using the FrontGrabber instance for telemetry
             telemetry.addLine(frontGrabber.isGrabberClosed() ? "Grabber: CLOSED" : "Grabber: OPEN");
-            telemetry.addLine(getArmTelemetry());
+            // Using the RobotArm instance for telemetry
+            telemetry.addLine(robotArm.getArmTelemetry());
             telemetry.update();
         }
     }
