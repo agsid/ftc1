@@ -1,28 +1,113 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.annotation.SuppressLint;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
 
 @TeleOp(name = "SidCode_New", group = "Linear OpMode")
 public class SidCode extends LinearOpMode {
 
-    private DcMotor leftHorizSlide = null;
-    private DcMotor leftSlide = null;
-    private DcMotor rightSlide = null;
-    private DcMotor left_back = null;
-    private DcMotor left_front = null;
-    private DcMotor right_back = null;
-    private DcMotor right_front = null;
+    private DcMotor leftHorizSlide;
+    private DcMotor leftSlide;
+    private DcMotor rightSlide;
+    private DcMotor left_back;
+    private DcMotor left_front;
+    private DcMotor right_back;
+    private DcMotor right_front;
 
-    // Define a small holding power and a joystick deadband
-    private static final double SLIDE_HOLDING_POWER = -0.15; // Adjust this value (e.g., 0.05 to 0.15)
-    private static final double JOYSTICK_DEADBAND = 0.1; // Joystick input below this won't move the motor
+    // Instance of the new FrontGrabber class
+    private FrontGrabber frontGrabber;
+
+    private Servo armServo;
+    private Servo wristServo;
+    private Position currentArmPosition; // Renamed to avoid conflict with enum 'Position'
+
+    private static final double SLIDE_HOLDING_POWER = -0.15;
+    private static final double JOYSTICK_DEADBAND = 0.1;
+
+    public enum Position {
+        GRAB_FROM_WALL(0.75, 0.5),
+        HANG_PREP(0, 0.3),
+        HANG_SPECIMEN(0, 0.4);
+
+        private double armPosition;
+        private double wristPosition;
+
+        Position(double armPosition, double wristPosition) {
+            this.armPosition = armPosition;
+            this.wristPosition = wristPosition;
+        }
+
+        public double getArmPosition() {
+            return armPosition;
+        }
+
+        public double getWristPosition() {
+            return wristPosition;
+        }
+    }
+
+    // Moved grabber logic into FrontGrabber class, removed initGrabber from here
+    // Removed closeGrabber, openGrabber, isGrabberClosed from here
+
+    public void initArm(HardwareMap hmap) {
+        armServo = hmap.servo.get("frontArmServo");
+        wristServo = hmap.servo.get("wristServo");
+        armServo.setDirection(Servo.Direction.REVERSE);
+        setArmToPreset(Position.GRAB_FROM_WALL); // Corrected: Using setArmToPreset to set initial arm position
+    }
+
+    public void setArmToPreset(Position position) {
+        setArmServoPosition(position.getArmPosition());
+        setWristServoPosition(position.getWristPosition());
+        currentArmPosition = position;
+    }
+
+    public Position getArmPreset() {
+        return currentArmPosition;
+    }
+
+    public void setArmServoPosition(double position) {
+        if (position >= 0 && position <= 1) {
+            armServo.setPosition(position);
+        }
+    }
+
+    public void setWristServoPosition(double position) {
+        if (position >= 0 && position <= 1) {
+            wristServo.setPosition(position);
+        }
+    }
+
+    private int getIndexOfPreset(Position preset) {
+        for (int i = 0; i < Position.values().length; i++) {
+            if (Position.values()[i] == preset) return i;
+        }
+        return -1;
+    }
+
+    public void incrementArmPreset(int amount) {
+        int currentPresetIndex = getIndexOfPreset(currentArmPosition);
+        if (currentPresetIndex == -1) return;
+        if (currentPresetIndex + amount < 0 || currentPresetIndex + amount >= Position.values().length) return;
+        Position newPreset = Position.values()[currentPresetIndex + amount];
+        setArmToPreset(newPreset);
+    }
+
+    @SuppressLint("DefaultLocale")
+    public String getArmTelemetry() {
+        return String.format("Arm/Wrist: %s", getArmPreset());
+    }
 
     @Override
     public void runOpMode() {
-        // Initialize motors by mapping them to hardware
+        telemetry.addData("Status", "Robot Ready");
+        telemetry.update();
+
         left_back = hardwareMap.get(DcMotor.class, "left_back");
         left_front = hardwareMap.get(DcMotor.class, "left_front");
         right_back = hardwareMap.get(DcMotor.class, "right_back");
@@ -32,78 +117,95 @@ public class SidCode extends LinearOpMode {
         leftSlide = hardwareMap.get(DcMotor.class, "leftSlide");
         rightSlide = hardwareMap.get(DcMotor.class, "rightSlide");
 
-        // Set initial motor directions
         left_back.setDirection(DcMotor.Direction.REVERSE);
         left_front.setDirection(DcMotor.Direction.REVERSE);
         right_back.setDirection(DcMotor.Direction.FORWARD);
         right_front.setDirection(DcMotor.Direction.FORWARD);
-
-        // Your slide directions. Assuming FORWARD power lifts the slide.
         leftHorizSlide.setDirection(DcMotor.Direction.FORWARD);
         leftSlide.setDirection(DcMotor.Direction.FORWARD);
         rightSlide.setDirection(DcMotor.Direction.REVERSE);
 
-        // Set ZeroPowerBehavior for the slides
         leftSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightSlide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // Wait for the game to start (driver presses PLAY)
+        // Initialize the FrontGrabber instance
+        frontGrabber = new FrontGrabber(hardwareMap, "frontGrabberServo", 0.70, 1.0);
+        initArm(hardwareMap); // Initialize the arm after other hardware
+
         waitForStart();
 
-        // Run until the end of the match (driver presses STOP)
         while (opModeIsActive()) {
-            // Get joystick inputs
             double drive = -gamepad1.left_stick_y;
             double strafe = gamepad1.left_stick_x;
             double turn = gamepad1.right_stick_x;
 
-            // Calculate power for each drive wheel
             double leftFrontPower = drive + turn + strafe;
             double leftBackPower = drive + turn - strafe;
             double rightFrontPower = drive - turn - strafe;
             double rightBackPower = drive - turn + strafe;
 
-            // Apply power to drive motors
             left_front.setPower(leftFrontPower);
             left_back.setPower(leftBackPower);
             right_front.setPower(rightFrontPower);
             right_back.setPower(rightBackPower);
 
-            // Control horizontal slide motor with dpad and add rumble effect
             if (gamepad2.dpad_up) {
                 leftHorizSlide.setPower(0.5);
-                // Rumble lightly when moving the horizontal slide up
-                gamepad2.rumble(0.2, 0.2, 50); // Left rumble, Right rumble, Duration in milliseconds
+                gamepad2.rumble(0.2, 0.2, 50);
             } else if (gamepad2.dpad_down) {
                 leftHorizSlide.setPower(-0.5);
-                // Rumble lightly when moving the horizontal slide down
                 gamepad2.rumble(0.2, 0.2, 50);
             } else {
                 leftHorizSlide.setPower(0);
-                // Stop rumble when the slide is not moving
-                gamepad2.rumble(0, 0, 0); // Stops any ongoing rumble
+                gamepad2.rumble(0, 0, 0);
             }
 
-            // HOLDING POWER LOGIC FOR VERTICAL SLIDES
             double leftSlidePower = -gamepad2.left_stick_y;
 
-            // Apply deadband to joystick input
             if (Math.abs(leftSlidePower) < JOYSTICK_DEADBAND) {
                 leftSlidePower = SLIDE_HOLDING_POWER;
             }
 
-            // Apply power to vertical slide motors
             leftSlide.setPower(leftSlidePower);
             rightSlide.setPower(leftSlidePower);
 
+            // Using the FrontGrabber instance for grabber control
+            if (gamepad1.a) {
+                if (frontGrabber.isGrabberClosed()) {
+                    frontGrabber.openGrabber();
+                } else {
+                    frontGrabber.closeGrabber();
+                }
+                sleep(250);
+            }
+         if (gamepad2.a) {
+                if (frontGrabber.isGrabberClosed()) {
+                    frontGrabber.openGrabber();
+                } else {
+                    frontGrabber.closeGrabber();
+                }
+                sleep(250);
+            }
+  
 
-            // Add telemetry for debugging (optional)
+            if (gamepad2.right_trigger > 0.1) {
+                setArmToPreset(Position.HANG_SPECIMEN);
+                sleep(200);
+            } else if (gamepad2.left_trigger > 0.1) {
+                setArmToPreset(Position.GRAB_FROM_WALL);
+                sleep(200);
+            }
+
+            if (gamepad1.dpad_up) setArmToPreset(Position.HANG_PREP);
+
             telemetry.addData("LeftFront Power", leftFrontPower);
             telemetry.addData("LeftBack Power", leftBackPower);
             telemetry.addData("RightFront Power", rightFrontPower);
             telemetry.addData("RightBack Power", rightBackPower);
             telemetry.addData("Slide Power", leftSlidePower);
-
+            // Using the FrontGrabber instance for telemetry
+            telemetry.addLine(frontGrabber.isGrabberClosed() ? "Grabber: CLOSED" : "Grabber: OPEN");
+            telemetry.addLine(getArmTelemetry());
             telemetry.update();
         }
     }
