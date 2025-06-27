@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import com.qualcomm.robotcore.hardware.Servo;
 
 public class RobotArm {
@@ -34,7 +35,7 @@ public class RobotArm {
     /**
      Constructor for the RobotArm class.
      Initializes the arm and wrist servos.
-    
+
      */
     public RobotArm(HardwareMap hmap) {
         armServo = hmap.servo.get("frontArmServo");
@@ -66,7 +67,7 @@ public class RobotArm {
         }
     }
 
-  
+
     private int getIndexOfPreset(Position preset) {
         for (int i = 0; i < Position.values().length; i++) {
             if (Position.values()[i] == preset) return i;
@@ -76,10 +77,10 @@ public class RobotArm {
 
     public void incrementArmPreset(int amount) {
         int currentPresetIndex = getIndexOfPreset(currentArmPosition);
-        if (currentPresetIndex == -1) return; 
+        if (currentPresetIndex == -1) return;
         int newIndex = currentPresetIndex + amount;
         if (newIndex < 0) {
-            newIndex = 0; 
+            newIndex = 0;
         } else if (newIndex >= Position.values().length) {
             newIndex = Position.values().length - 1; // Prevent going above the last preset
         }
@@ -89,7 +90,7 @@ public class RobotArm {
     }
 
 
-    @SuppressLint("DefaultLocale")
+
     public String getArmTelemetry() {
         return String.format("Arm/Wrist: %s", getArmPreset());
     }
