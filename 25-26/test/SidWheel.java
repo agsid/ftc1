@@ -22,10 +22,10 @@ public class SidCode extends LinearOpMode {
 
         while (opModeIsActive()) {
             double drive = -gamepad1.right_trigger;
-            double right_strafe = gamepad1.right_bumper;
-            double left_strafe = gamepad1.left_bumper;
+            double right_strafe = gamepad1.right_bumper ? 1.0 : 0.0;
+            double left_strafe = gamepad1.left_bumper ? -1.0 : 0.0;
             double turn = gamepad1.left_stick_x;
-            double strafe = right_strafe + left_strafe ;
+            double strafe = right_strafe + left_strafe;
 
             drivetrain.setPower(drive,strafe,turn);
 
