@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+adpackage org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -21,11 +21,20 @@ public class SidWheel extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            double drive = -gamepad1.right_trigger;
+            double accelerate = gamepad1.right_trigger;
+            double brake = -gamepad1.left_trigger;
+
+            double turn = gamepad1.left_stick_x;
+            
             double right_strafe = gamepad1.right_bumper ? 1.0 : 0.0;
             double left_strafe = gamepad1.left_bumper ? -1.0 : 0.0;
-            double turn = gamepad1.left_stick_x;
             double strafe = right_strafe + left_strafe;
+
+            double drive = accelerate - (brake*accelerate)
+            double drive = Math.max(0.0, drive); 
+            if (drive ==0 and gamepad1.left_trigger not pressed){
+                   drive=0.1
+            }
 
             drivetrain.setPower(drive,strafe,turn);
 
@@ -33,9 +42,6 @@ public class SidWheel extends LinearOpMode {
             telemetry.addData("LeftBack Power", drivetrain.getLeftBackPower());
             telemetry.addData("RightFront Power", drivetrain.getRightFrontPower());
             telemetry.addData("RightBack Power", drivetrain.getRightBackPower());
-            telemetry.addData("Horizontal Slide Power", horizontalSlide.getCurrentPower());
-            telemetry.addLine(frontGrabber.isGrabberClosed() ? "Grabber: CLOSED" : "Grabber: OPEN");
-            telemetry.addLine(robotArm.getArmTelemetry());
             telemetry.update();
         }
     }
