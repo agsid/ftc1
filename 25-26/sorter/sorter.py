@@ -1,22 +1,21 @@
 def currentpos():
-    x=12
+    x = 12
     return x
-rotate=currentpos()
+
+rotate = currentpos()
 ball1 = [input("Ball1 Color : "), rotate, "ball1"]
-rotate+=120
+rotate += 120
 ball2 = [input("Ball2 Color : "), rotate, "ball2"]
-rotate+=120
+rotate += 120
 ball3 = [input("Ball3 Color : "), rotate, "ball3"]
 
 shoot = []
 sequence = input("s : ")
-
 purple = []
 green_ball = None
 
 def green(ball1, ball2, ball3):
     global green_ball, purple
-
     if ball1[0] == "Green":
         green_ball = ball1
         purple = [ball2, ball3]
@@ -27,31 +26,39 @@ def green(ball1, ball2, ball3):
         green_ball = ball3
         purple = [ball1, ball2]
     else:
-        green_ball = "None"
-        purple = [ball1,ball2,ball3]
+        green_ball = ["None"]
+        purple = [ball1, ball2, ball3]
         return None
-
     print(green_ball)
     return green_ball
 
 green(ball1, ball2, ball3)
 
 if sequence == "GPP":
-    shoot.extend([green_ball, purple])
+    shoot = [green_ball, purple[0], purple[1]]
     print(shoot)
 if sequence == "PGP":
-    shoot.extend([purple[0], green_ball, purple[1]])
+    shoot = [purple[0], green_ball, purple[1]]
     print(shoot)
 if sequence == "PPG":
-    shoot.extend([purple,green_ball])
+    shoot = [purple[0], purple[1], green_ball]
     print(shoot)
     
-"""final=input("Enter the Key to shoot f:green h:purple g:allin sequnce")
-if final=="g":
+final = input("Enter the Key to shoot f:green h:purple g:allin sequence: ")
+if final == "g":
     print(shoot)
-elif final=="h":
+    if shoot:
+        del shoot[0]
+    print(shoot)
+elif final == "h":
     print(purple[0])
-elif final=="f":  
-    print(green)
+    if purple:
+        del purple[0]
+    print(shoot)
+elif final == "f":  
+    print(green_ball)
+    if green_ball and len(green_ball) > 0:
+        del green_ball[0]
+    print(shoot)
 else:
-    print("wrong key")"""
+    print("wrong key")
